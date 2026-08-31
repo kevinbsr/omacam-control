@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+.privacy_saved.json
+.DS_Store

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "kevin.camera",
+  "name": "Omacam Control",
+  "version": "1.0.0",
+  "author": "Kevin",
+  "license": "MIT",
+  "description": "Native, ultra-lightweight V4L2 webcam sensor calibration, exposure controls and hardware privacy killswitch for Omarchy.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Omacam Control",
+    "description": "Webcam exposure, color, hardware tuning controls and instant privacy shutter.",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
