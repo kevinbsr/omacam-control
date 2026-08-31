@@ -10,7 +10,7 @@
 
 <br />
 
-<img src="preview.png" alt="Omacam Control UI Preview" width="850" />
+<img src="preview.png" alt="Omacam Control UI Preview" width="480" />
 
 </div>
 
