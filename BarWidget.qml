@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "."
 
 BarWidget {
   id: root
@@ -11,11 +12,12 @@ BarWidget {
   readonly property string helperPath: Qt.resolvedUrl("camera_ctl.py").toString().replace(/^file:\/\//, "")
   readonly property color foreground: bar ? bar.barForeground : Color.foreground
 
-  property string currentDevice: "/dev/video7"
-  property var devices: []
-  property var controls: ({})
-  property bool active: false
-  property bool inUse: true
+  // State comes from the shared poller rather than a per-screen copy.
+  readonly property string currentDevice: CameraMonitor.currentDevice
+  readonly property var devices: CameraMonitor.devices
+  readonly property var controls: CameraMonitor.controls
+  readonly property bool active: CameraMonitor.active
+  readonly property bool inUse: CameraMonitor.inUse
   property bool cameraBlocked: false
 
   // nf-md-camera (󰄀) e nf-md-camera_off (󰗟)
@@ -62,37 +64,19 @@ BarWidget {
     if ("cameraBlocked" in target) target.cameraBlocked = root.cameraBlocked
   }
 
-  function handleQueryResult(line) {
-    var raw = String(line || "").trim()
-    if (!raw) return
-    try {
-      var data = JSON.parse(raw)
-      if (data.devices) root.devices = data.devices
-      if (data.current) root.currentDevice = data.current
-      if (data.in_use !== undefined) root.inUse = data.in_use
-      if (data.controls) {
-        root.controls = data.controls
-        root.active = Object.keys(data.controls).length > 0
-      }
-      if (panelLoader.item && typeof panelLoader.item.updateControls === "function") {
-        panelLoader.item.updateControls(root.controls, root.devices, root.currentDevice)
-      }
-    } catch (e) {}
+  function pushControlsToPanel() {
+    if (panelLoader.item && typeof panelLoader.item.updateControls === "function") {
+      panelLoader.item.updateControls(root.controls, root.devices, root.currentDevice)
+    }
+  }
+
+  Connections {
+    target: CameraMonitor
+    function onUpdated() { root.pushControlsToPanel() }
   }
 
   onBarChanged: injectPanel()
   onSettingsChanged: injectPanel()
-
-  Process {
-    id: monitorProc
-    running: true
-    command: ["python3", root.helperPath, "monitor"]
-    stdout: SplitParser {
-      onRead: function(line) {
-        root.handleQueryResult(line)
-      }
-    }
-  }
 
   Loader {
     id: panelLoader
