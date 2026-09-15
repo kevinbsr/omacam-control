@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "kevin.camera",
   "name": "Omacam Control",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Kevin",
   "license": "MIT",
   "description": "Native, ultra-lightweight V4L2 webcam sensor calibration, exposure controls and hardware privacy killswitch for Omarchy.",

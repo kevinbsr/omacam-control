@@ -32,7 +32,7 @@ Most Linux webcam utilities either rely on heavy GUI suites or load multimedia f
 
 - 🟢 **On-Demand Auto-Show & Auto-Hide:** Automatically appears on the bar when camera capture starts and cleanly disappears when idle.
 - 🔋 **Zero dGPU Power Drain:** Built without `QtMultimedia`. Hybrid laptops safely maintain `D3cold` sleep state.
-- ⚡ **Physical Privacy Killswitch:** Right-click the bar icon to instantly cut power to the USB webcam at the kernel level (`authorized = 0`), powering down sensor and LED across all active calls.
+- ⚡ **Physical Privacy Killswitch:** Right-click the bar icon to instantly cut power to the USB webcam at the kernel level (`authorized = 0`), powering down sensor and LED across all active calls. Only the USB device that owns the detected V4L2 capture node is touched, and only if its interface is USB video class (see [Privacy shutter setup](#-privacy-shutter-setup)).
 - 🎛️ **Live Hardware Sensor Controls:**
   - **Exposure Time & Lock Manual Mode:** Eliminate camera blowout, flickering, and motion blur.
   - **Dynamic Framerate:** Toggle low-light adaptive framerate.
@@ -58,10 +58,27 @@ Most Linux webcam utilities either rely on heavy GUI suites or load multimedia f
 ## 📦 Requirements
 
 - **Omarchy Quattro** (`omarchy-shell` / `quickshell`)
-- **V4L2 utilities:**
-  ```bash
-  sudo pacman -S v4l-utils
-  ```
+- **Python 3** (standard library only). Controls are read and written with V4L2 ioctls, so `v4l-utils` is not needed.
+- **`fuser`** (`psmisc`, optional): only used to detect capture on cameras whose streaming state sysfs cannot report (non-USB or bulk-transfer UVC).
+
+### 🔒 Privacy shutter setup
+
+The shutter writes `/sys/bus/usb/devices/<port>/authorized`, which only root can write by default. The plugin never escalates privileges itself. If you want the shutter, grant write access to your camera's attribute once, as root, scoped to its USB vendor and product IDs (find them with `lsusb`). Desktop sessions reach `/dev/video*` through logind ACLs rather than the `video` group, so use a dedicated group:
+
+```bash
+groupadd --system omacam
+usermod -aG omacam "$USER"   # log out and back in afterwards
+```
+
+Then create `/etc/udev/rules.d/99-omacam-privacy.rules`, replacing the IDs with your camera's:
+
+```
+ACTION=="add|change", SUBSYSTEM=="usb", ATTR{idVendor}=="0c45", ATTR{idProduct}=="6720", TEST=="authorized", RUN+="/bin/sh -c 'chgrp omacam /sys%p/authorized && chmod 0664 /sys%p/authorized'"
+```
+
+Reload with `udevadm control --reload && udevadm trigger --action=change --subsystem-match=usb`. Without this setup everything else works and the shutter reports a permission error.
+
+While a camera is blocked, the helper records its USB sysfs path and IDs in `~/.local/state/omacam-control/privacy.json`, and unblocking re-authorizes only that device after checking the IDs still match.
 
 ---
 
@@ -102,16 +119,19 @@ You can trigger Omacam Control actions directly from scripts, keybindings, or Hy
 # Toggle the settings panel
 omarchy-shell shell toggle kevin.camera
 
-# Apply presets via CLI
-python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py preset balanced
-python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py preset night
-python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py preset bright
-python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py preset auto
+# List detected capture devices
+python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py devices
+
+# Apply presets (balanced, night, bright, auto); the device is optional and
+# defaults to the first detected capture device
+python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py preset /dev/video2 balanced
 
 # Toggle hardware privacy killswitch
-python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py privacy 1 # Block
-python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py privacy 0 # Unblock
+python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py privacy /dev/video2 1 # Block
+python3 ~/.config/omarchy/plugins/kevin.camera/camera_ctl.py privacy 0            # Unblock
 ```
+
+Device arguments must resolve to a V4L2 video capture node (`/dev/videoN` or a `/dev/v4l/by-id` link); anything else is rejected with exit code 2.
 
 ---
 

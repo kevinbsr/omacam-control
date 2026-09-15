@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "."
 
 Panel {
   id: root
@@ -19,7 +20,7 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property string helperPath: Qt.resolvedUrl("camera_ctl.py").toString().replace(/^file:\/\//, "")
 
-  property string currentDevice: hostWidget ? hostWidget.currentDevice : "/dev/video3"
+  property string currentDevice: hostWidget ? hostWidget.currentDevice : ""
   property var devices: hostWidget ? hostWidget.devices : []
   property var controls: hostWidget ? hostWidget.controls : ({})
 
@@ -32,7 +33,7 @@ Panel {
   property int backlightVal: 1
   property bool autoExposure: false
   property bool dynamicFps: false
-  property bool cameraBlocked: hostWidget ? hostWidget.cameraBlocked : false
+  readonly property bool cameraBlocked: CameraMonitor.blocked
 
   readonly property var presetsMap: ({
     "balanced": {
@@ -113,6 +114,7 @@ Panel {
   }
 
   function setControl(key, val) {
+    if (!root.currentDevice) return
     Quickshell.execDetached(["python3", root.helperPath, "set", root.currentDevice, key + "=" + val])
   }
 
@@ -128,7 +130,8 @@ Panel {
       if (p.auto_exposure !== undefined) root.autoExposure = p.auto_exposure === 3
       if (p.exposure_dynamic_framerate !== undefined) root.dynamicFps = p.exposure_dynamic_framerate === 1
     }
-    Quickshell.execDetached(["python3", root.helperPath, "preset", root.currentDevice, name])
+    if (root.currentDevice)
+      Quickshell.execDetached(["python3", root.helperPath, "preset", root.currentDevice, name])
     presetTimer.restart()
   }
 
@@ -445,10 +448,7 @@ Panel {
             accent: Color.urgent
             fontFamily: root.fontFamily
             onClicked: {
-              var next = !root.cameraBlocked
-              root.cameraBlocked = next
-              Quickshell.execDetached(["python3", root.helperPath, "privacy", next ? "1" : "0"])
-              if (hostWidget) hostWidget.cameraBlocked = next
+              CameraMonitor.setPrivacy(!root.cameraBlocked)
             }
           }
         }

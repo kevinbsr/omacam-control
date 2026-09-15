@@ -18,7 +18,7 @@ BarWidget {
   readonly property var controls: CameraMonitor.controls
   readonly property bool active: CameraMonitor.active
   readonly property bool inUse: CameraMonitor.inUse
-  property bool cameraBlocked: false
+  readonly property bool cameraBlocked: CameraMonitor.blocked
 
   // nf-md-camera (󰄀) e nf-md-camera_off (󰗟)
   readonly property string icon: cameraBlocked ? "󰗟" : "󰄀"
@@ -42,12 +42,7 @@ BarWidget {
   }
 
   function togglePrivacy() {
-    var next = !root.cameraBlocked
-    root.cameraBlocked = next
-    Quickshell.execDetached(["python3", root.helperPath, "privacy", next ? "1" : "0"])
-    if (panelLoader.item) {
-      panelLoader.item.cameraBlocked = next
-    }
+    CameraMonitor.setPrivacy(!root.cameraBlocked)
   }
 
   function preset(name) {
@@ -61,7 +56,6 @@ BarWidget {
     if ("settings" in target) target.settings = root.settings
     if ("anchorItem" in target) target.anchorItem = button
     if ("hostWidget" in target) target.hostWidget = root
-    if ("cameraBlocked" in target) target.cameraBlocked = root.cameraBlocked
   }
 
   function pushControlsToPanel() {
